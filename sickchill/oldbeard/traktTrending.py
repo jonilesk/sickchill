@@ -17,6 +17,9 @@ class traktTrending(object):
         """Get trending show information from Trakt"""
 
         trending_shows = []
+        # Bound up front: it used to be assigned only at the end of the try, so any traktException
+        # left the return below raising UnboundLocalError, which then masked the real Trakt error.
+        black_list = False
 
         trakt_api = TraktAPI(settings.SSL_VERIFY, settings.TRAKT_TIMEOUT)
 
@@ -63,10 +66,7 @@ class traktTrending(object):
                 except MultipleShowObjectsException:
                     continue
 
-            if settings.TRAKT_BLACKLIST_NAME != "":
-                black_list = True
-            else:
-                black_list = False
+            black_list = settings.TRAKT_BLACKLIST_NAME != ""
 
         except traktException as error:
             logger.warning(f"Could not connect to Trakt service: {error}")

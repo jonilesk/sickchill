@@ -206,6 +206,8 @@ class ConfigNotifications(Config):
         )
 
         config.change_use_trakt(self.get_body_argument("use_trakt", default=None))
+        settings.TRAKT_API_KEY = self.get_body_argument("trakt_api_key", default=settings.TRAKT_API_KEY).strip()
+        settings.TRAKT_API_SECRET = self.get_body_argument("trakt_api_secret", default=settings.TRAKT_API_SECRET).strip()
         settings.TRAKT_USERNAME = self.get_body_argument("trakt_username", default=None)
         settings.TRAKT_REMOVE_WATCHLIST = config.checkbox_to_value(self.get_body_argument("trakt_remove_watchlist", default=None))
         settings.TRAKT_REMOVE_SERIESLIST = config.checkbox_to_value(self.get_body_argument("trakt_remove_serieslist", default=None))

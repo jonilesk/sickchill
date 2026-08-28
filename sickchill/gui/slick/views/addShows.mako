@@ -1,4 +1,7 @@
 <%inherit file="/layouts/main.mako" />
+<%!
+    from sickchill import settings
+%>
 <%block name="content">
 <div id="addShowPortal">
     <div class="row">
@@ -24,6 +27,22 @@
     <br/>
     <div class="row">
         <div class="col-md-12">
+            <a href="${static_url('addShows/upcomingShows/?list=series', include_version=False)}" id="btnNewShow" class="btn btn-large">
+                <div class="button"><div class="add-list-icon-addtvmaze"></div></div>
+                <div class="buttontext">
+                    <h3>${_('Add From TVmaze\'s New &amp; Upcoming Shows')}</h3>
+                    <p>${_('Browse series and season premieres airing worldwide over the coming months. TVmaze needs no API key, so this works out of the box.')}</p>
+                </div>
+            </a>
+        </div>
+    </div>
+    <br/>
+    ## Trakt now requires every application to bring its own API key, and SickChill has no usable
+    ## default. Showing this tile without one only leads to an empty list, so it appears once a key
+    ## and secret are configured under Config -> Notifications -> Trakt.
+    % if settings.TRAKT_API_KEY and settings.TRAKT_API_SECRET:
+    <div class="row">
+        <div class="col-md-12">
             <a href="${static_url('addShows/trendingShows/?traktList=anticipated', include_version=False)}" id="btnNewShow" class="btn btn-large">
                 <div class="button"><div class="add-list-icon-addtrakt"></div></div>
                 <div class="buttontext">
@@ -34,6 +53,7 @@
         </div>
     </div>
     <br/>
+    % endif
     <div class="row">
         <div class="col-md-12">
             <a href="${static_url('addShows/popularShows/', include_version=False)}" id="btnNewShow" class="btn btn-large">

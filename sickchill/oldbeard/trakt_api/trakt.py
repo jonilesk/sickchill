@@ -10,6 +10,17 @@ from sickchill import logger, settings
 from sickchill.oldbeard.trakt_api.exceptions import traktException
 
 
+def pin_url() -> str:
+    """
+    The URL the "Get Trakt PIN" button opens.
+
+    Built from the configured client id rather than hardcoded, because the old
+    https://trakt.tv/pin/4562 form names one specific application: a user who supplies their own
+    key would still have been sent to authorise SickChill's dead app.
+    """
+    return f"{settings.TRAKT_OAUTH_URL}oauth/authorize?response_type=code&client_id={settings.TRAKT_API_KEY}&redirect_uri=urn:ietf:wg:oauth:2.0:oob"
+
+
 class TraktAPI:
     def __init__(self, ssl_verify=True, timeout=30):
         self.verify = certifi.where() if ssl_verify else False
@@ -24,6 +35,10 @@ class TraktAPI:
             return False
         elif count > 0:
             time.sleep(2)
+
+        if not (settings.TRAKT_API_KEY and settings.TRAKT_API_SECRET):
+            logger.warning(_("No Trakt API key and secret configured, cannot authorize. See Config, Notifications, Trakt."))
+            return False
 
         data = {"client_id": settings.TRAKT_API_KEY, "client_secret": settings.TRAKT_API_SECRET, "redirect_uri": "urn:ietf:wg:oauth:2.0:oob"}
 
@@ -60,6 +75,12 @@ class TraktAPI:
         if headers is None:
             headers = self.headers
 
+        if not settings.TRAKT_API_KEY:
+            # Say the actual cause. Without a key Trakt answers 403, which used to surface as a
+            # bare "Code error: 403" with no hint that a key is what is missing.
+            logger.warning(_("No Trakt API key configured. Register an application at trakt.tv and enter its key under Config, Notifications, Trakt."))
+            return {}
+
         if count >= 2 and not settings.TRAKT_ACCESS_TOKEN:
             logger.warning(_("You must get a Trakt TOKEN. Check your Trakt settings"))
             return {}
@@ -78,7 +99,7 @@ class TraktAPI:
         except RequestException as error:
             code = getattr(error.response, "status_code", None)
             if not code:
-                if "timed out" in error:
+                if "timed out" in str(error):
                     logger.warning(_("Timeout connecting to Trakt. Try to increase timeout value in Trakt settings"))
                 # This is pretty much a fatal error if there is no status_code
                 # It means there basically was no response at all

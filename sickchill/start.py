@@ -609,6 +609,10 @@ def initialize(console_logging: bool = True, debug: bool = False, dbdebug: bool 
         settings.DISCORD_TTS = check_setting_bool(settings.CFG, "Discord", "discord_tts")
 
         settings.USE_TRAKT = check_setting_bool(settings.CFG, "Trakt", "use_trakt")
+        # Trakt now requires every application to bring its own key. The shipped defaults are dead,
+        # so these exist to let a user register their own Trakt application and paste it in.
+        settings.TRAKT_API_KEY = check_setting_str(settings.CFG, "Trakt", "trakt_api_key", settings.TRAKT_API_KEY, censor_log=True)
+        settings.TRAKT_API_SECRET = check_setting_str(settings.CFG, "Trakt", "trakt_api_secret", settings.TRAKT_API_SECRET, censor_log=True)
         settings.TRAKT_USERNAME = check_setting_str(settings.CFG, "Trakt", "trakt_username", censor_log=True)
         settings.TRAKT_ACCESS_TOKEN = check_setting_str(settings.CFG, "Trakt", "trakt_access_token", censor_log=True)
         settings.TRAKT_REFRESH_TOKEN = check_setting_str(settings.CFG, "Trakt", "trakt_refresh_token", censor_log=True)
@@ -1541,6 +1545,8 @@ def save_config():
             },
             "Trakt": {
                 "use_trakt": int(settings.USE_TRAKT),
+                "trakt_api_key": settings.TRAKT_API_KEY,
+                "trakt_api_secret": settings.TRAKT_API_SECRET,
                 "trakt_username": settings.TRAKT_USERNAME,
                 "trakt_access_token": settings.TRAKT_ACCESS_TOKEN,
                 "trakt_refresh_token": settings.TRAKT_REFRESH_TOKEN,

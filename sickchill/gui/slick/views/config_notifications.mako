@@ -4,6 +4,7 @@
     from sickchill import settings
     from sickchill.oldbeard.filters import hide
     from sickchill.oldbeard.helpers import anon_url
+    from sickchill.oldbeard.trakt_api import pin_url as trakt_pin_url
     import sickchill
 %>
 
@@ -2726,6 +2727,44 @@
 
                             <div class="field-pair row">
                                 <div class="col-lg-3 col-md-4 col-sm-5 col-xs-12">
+                                    <label class="component-title">${_('API Key')}</label>
+                                </div>
+                                <div class="col-lg-9 col-md-8 col-sm-7 col-xs-12 component-desc">
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <input type="text" name="trakt_api_key" id="trakt_api_key" value="${settings.TRAKT_API_KEY}" class="form-control input-sm input350" autocapitalize="off" autocomplete="no" />
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <label for="trakt_api_key">${_('the Client ID of your own Trakt application. Trakt no longer accepts the key SickChill used to ship, so browsing Trakt lists and syncing need a key you register yourself at')}
+                                                <a href="${anon_url('https://trakt.tv/oauth/applications/new')}" rel="noreferrer" target="_blank">trakt.tv</a>.
+                                                ${_('Use')} <span class="tip">urn:ietf:wg:oauth:2.0:oob</span> ${_('as the redirect uri.')}</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="field-pair row">
+                                <div class="col-lg-3 col-md-4 col-sm-5 col-xs-12">
+                                    <label class="component-title">${_('API Secret')}</label>
+                                </div>
+                                <div class="col-lg-9 col-md-8 col-sm-7 col-xs-12 component-desc">
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <input type="text" name="trakt_api_secret" id="trakt_api_secret" value="${settings.TRAKT_API_SECRET}" class="form-control input-sm input350" autocapitalize="off" autocomplete="no" />
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <label for="trakt_api_secret">${_('the Client Secret of the same Trakt application.')}</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="field-pair row">
+                                <div class="col-lg-3 col-md-4 col-sm-5 col-xs-12">
                                     <label class="component-title">${_('Username')}</label>
                                 </div>
                                 <div class="col-lg-9 col-md-8 col-sm-7 col-xs-12 component-desc">
@@ -2749,7 +2788,7 @@
                                 <div class="col-lg-9 col-md-8 col-sm-7 col-xs-12 component-desc">
                                     <div class="row">
                                         <div class="col-md-12">
-                                            <input type="hidden" id="trakt_pin_url" value="${settings.TRAKT_PIN_URL}">
+                                            <input type="hidden" id="trakt_pin_url" value="${trakt_pin_url()}">
                                             <input type="button" class="btn ${('', 'hide')[bool(settings.TRAKT_ACCESS_TOKEN)]}" value="${_('Get Trakt PIN')}" id="TraktGetPin" />
                                         </div>
                                     </div>

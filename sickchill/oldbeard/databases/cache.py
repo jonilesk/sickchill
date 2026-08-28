@@ -76,3 +76,30 @@ class AddCacheIndexes(ResultsTable):
         self.connection.action("CREATE INDEX IF NOT EXISTS idx_scene_exceptions_lookup ON scene_exceptions (indexer_id, show_name, season);")
         self.connection.action("CREATE INDEX IF NOT EXISTS idx_results_name ON results (name);")
         self.increment_db_version()
+
+
+class AddTVmazePremieres(AddCacheIndexes):
+    """
+    Local cache of upcoming premieres from TVmaze, refreshed at most once a day.
+
+    Only premieres carrying a TheTVDB id are stored: tv_shows is keyed on a TVDB indexer_id, so a
+    show without one cannot be added to SickChill and has nothing useful to offer on the page.
+
+    Keyed on the episode id rather than the show id, because a returning show can have more than
+    one season premiere inside the horizon and keying on the show would silently drop one.
+    """
+
+    def test(self):
+        return self.has_table("tvmaze_premieres")
+
+    def execute(self):
+        self.connection.action(
+            "CREATE TABLE tvmaze_premieres ("
+            "episode_id INTEGER PRIMARY KEY, tvmaze_id INTEGER NOT NULL, tvdb_id INTEGER NOT NULL, imdb_id TEXT, "
+            "name TEXT NOT NULL, kind TEXT NOT NULL, season INTEGER, "
+            "airstamp TEXT NOT NULL, airdate TEXT, network TEXT, channel_kind TEXT, "
+            "country TEXT, language TEXT, genres TEXT, runtime INTEGER, rating REAL, "
+            "weight INTEGER, image_url TEXT, summary TEXT, tvmaze_url TEXT NOT NULL, status TEXT);"
+        )
+        self.connection.action("CREATE INDEX IF NOT EXISTS idx_tvmaze_premieres_kind_airstamp ON tvmaze_premieres (kind, airstamp);")
+        self.connection.action("CREATE TABLE tvmaze_refresh (list TEXT PRIMARY KEY, last_refreshed INTEGER);")

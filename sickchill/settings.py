@@ -484,15 +484,20 @@ TRACKERS_LIST += "udp://exodus.desync.com:6969,udp://9.rarbg.me:2710/announce,"
 TRACKERS_LIST += "udp://glotorrents.pw:6969/announce,udp://tracker.openbittorrent.com:80/announce,"
 TRACKERS_LIST += "udp://tracker.opentrackr.org:1337/announce,udp://tracker.internetwarriors.net:1337"
 TRAKT_ACCESS_TOKEN = None
-# TRAKT_API_KEY = 'd4161a7a106424551add171e5470112e4afdaf2438e6ef2fe0548edc75924868'
-TRAKT_API_KEY = "5c65f55e11d48c35385d9e8670615763a605fad28374c8ae553a7b7a50651ddd"
-TRAKT_API_SECRET = "b53e32045ac122a445ef163e6d859403301ffe9b17fb8321d428531b69022a82"
+# Empty by design. Trakt requires every application to register and use its own key, and the two
+# SickChill used to ship are no longer accepted, so shipping them only produced an empty show list
+# with nothing the user could change. Set your own under Config -> Notifications -> Trakt; anything
+# that talks to Trakt stays hidden or inert until you do.
+# Retired keys, kept for reference only:
+#   d4161a7a106424551add171e5470112e4afdaf2438e6ef2fe0548edc75924868
+#   5c65f55e11d48c35385d9e8670615763a605fad28374c8ae553a7b7a50651ddd
+TRAKT_API_KEY = ""
+TRAKT_API_SECRET = ""
 TRAKT_API_URL = "https://api.trakt.tv/"
 TRAKT_BLACKLIST_NAME = None
 TRAKT_DEFAULT_INDEXER = None
 TRAKT_METHOD_ADD = None
 TRAKT_OAUTH_URL = "https://trakt.tv/"
-TRAKT_PIN_URL = "https://trakt.tv/pin/4562"
 TRAKT_REFRESH_TOKEN = None
 TRAKT_REMOVE_SERIESLIST = False
 TRAKT_REMOVE_SHOW_FROM_SICKCHILL = False

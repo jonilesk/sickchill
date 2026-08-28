@@ -17,6 +17,7 @@ from sickchill.oldbeard.common import Quality
 from sickchill.oldbeard.network_timezones import sc_today
 from sickchill.oldbeard.trakt_api import TraktAPI
 from sickchill.oldbeard.traktTrending import trakt_trending
+from sickchill.show.recommendations import tvmaze
 from sickchill.show.recommendations.favorites import favorites
 from sickchill.show.recommendations.imdb import imdb_popular
 from sickchill.show.Show import Show
@@ -247,6 +248,11 @@ class AddShows(Home):
         if settings.TRAKT_ACCESS_TOKEN:
             trakt_options["recommended"] = _("Recommended Shows")
 
+        # getTrendingShows accepts list names this page does not, so an unknown value has to fall
+        # back rather than raise. 'recommended' arrives here whenever the access token went away.
+        if trakt_list not in trakt_options:
+            trakt_list = "anticipated"
+
         t = PageTemplate(rh=self, filename="addShows_trendingShows.mako")
         return t.render(
             title=trakt_options[trakt_list],
@@ -303,6 +309,50 @@ class AddShows(Home):
             image_path = trakt_trending.get_image_path(trakt_trending.get_image_name(indexer_id))
             trakt_trending.cache_image(image_url, image_path)
             return indexer_id
+
+    def upcomingShows(self):
+        """
+        Display upcoming show premieres from TVmaze, which needs no API key.
+        """
+
+        list_options = {
+            tvmaze.SERIES: _("New Series Premieres"),
+            tvmaze.SEASON: _("Season Premieres"),
+        }
+
+        list_kind = self.get_query_argument("list", default=tvmaze.SERIES).lower()
+        if list_kind not in list_options:
+            list_kind = tvmaze.SERIES
+
+        t = PageTemplate(rh=self, filename="addShows_upcomingShows.mako")
+        return t.render(
+            title=list_options[list_kind],
+            header=list_options[list_kind],
+            listKind=list_kind,
+            list_options=list_options,
+            controller="addShows",
+            action="upcomingShows",
+        )
+
+    def getUpcomingShows(self):
+        """
+        Render the premiere cards. Refreshes from TVmaze at most once a day; every other view of
+        this page is a local query against cache.db.
+        """
+        t = PageTemplate(rh=self, filename="upcomingShows.mako")
+
+        list_kind = self.get_query_argument("list", default=tvmaze.SERIES).lower()
+
+        upcoming_shows = []
+        try:
+            tvmaze.refresh_premieres()
+            upcoming_shows = tvmaze.get_premieres(list_kind)
+        except Exception as error:
+            logger.warning(f"Could not get upcoming shows from TVmaze: {error}")
+
+        in_show_list = {show.indexerid for show in settings.show_list if show.indexerid}
+
+        return t.render(upcoming_shows=upcoming_shows, in_show_list=in_show_list)
 
     def popularShows(self):
         """
@@ -461,7 +511,7 @@ class AddShows(Home):
         if try_int(indexer_id) <= 0 or existing:
             return add_error(existing)
 
-        return self.newShow("|".join([str(1), "", indexer_id, ""]), [], search_string=show_name)
+        return self.newShow("|".join([str(1), "", str(indexer_id), ""]), [], search_string=show_name)
 
     def addNewShow(self):
         """
