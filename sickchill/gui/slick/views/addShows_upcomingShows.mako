@@ -63,3 +63,7 @@
         </div>
     </div>
 </%block>
+
+<%block name="scripts">
+    <script type="text/javascript" src="${static_url('js/upcomingShows.js')}"></script>
+</%block>

@@ -4408,24 +4408,6 @@ const SICKCHILL = {
                 );
             });
         },
-        upcomingShows() {
-            const load = listKind => {
-                $('#upcomingShows').loadRemoteShows(
-                    '/addShows/getUpcomingShows/?list=' + listKind,
-                    'Loading upcoming shows...',
-                    'TVmaze timed out, refresh page to try again',
-                );
-            };
-
-            load($('#listKind').val());
-
-            $('#listselection').on('change', event => {
-                const listKind = event.target.value;
-                window.history.replaceState({}, document.title, '?list=' + listKind);
-                $('#listKind').val(listKind);
-                load(listKind);
-            });
-        },
         popularShows() {
             $.initRemoteShowGrid();
         },
