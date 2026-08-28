@@ -73,6 +73,10 @@ BACKLOG_DAYS = 7
 BACKLOG_FREQUENCY = None
 BACKLOG_MISSING_ONLY = False
 backlogSearchScheduler = None
+# Executables and scripts are never legitimate TV episode payloads. Releases containing them are a
+# common malware vector, so they are blocked at search, snatch and post-processing time.
+BLOCK_EXECUTABLE_FILES = True
+EXECUTABLE_EXTENSIONS = "exe,scr,bat,cmd,pif,msi,msp,cpl,hta,jar,vbs,vbe,js,jse,wsf,wsh,ps1,lnk,reg,dll,sys,drv,apk,app,dmg,pkg,deb,run"
 BOXCAR2_ACCESSTOKEN = None
 BOXCAR2_NOTIFY_ONDOWNLOAD = False
 BOXCAR2_NOTIFY_ONSNATCH = False

@@ -171,6 +171,58 @@ def is_sync_file(filename: Union[Path, PathLike, str] | None = None) -> bool:
     )
 
 
+# Unicode bidirectional formatting characters. These have no legitimate place in a release
+# filename; they are used to make "Show.S01E01.1080pexe.mkv" render while the real extension
+# is .exe, so their mere presence is treated as a disguise attempt.
+BIDI_CONTROL_CHARACTERS = "\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069"
+
+
+def is_executable_file(filename: Union[Path, PathLike, str] | None = None) -> bool:
+    """
+    Check whether the provided ``filename`` looks like an executable or script rather than media.
+
+    Catches plain executables (``setup.exe``), double extensions used to disguise them
+    (``Show.S01E01.mkv.exe``), and names containing Unicode bidi overrides, which exist only
+    to fake an extension.
+
+    :param filename: The filename to check
+    :return: ``True`` if the ``filename`` looks executable, ``False`` otherwise
+    """
+    if filename is None or not settings.BLOCK_EXECUTABLE_FILES:
+        return False
+
+    # Normalise Path/PathLike/str down to a bare name before any string operations.
+    name = Path(filename).name
+    if not name:
+        return False
+
+    if any(character in name for character in BIDI_CONTROL_CHARACTERS):
+        return True
+
+    blocked = {extension.strip().lstrip(".").lower() for extension in settings.EXECUTABLE_EXTENSIONS.split(",") if extension.strip()}
+    if not blocked:
+        return False
+
+    # Only the final extension decides what actually runs, so that is what we test. This already
+    # covers the disguised "Show.S01E01.mkv.exe" form. We deliberately do not test earlier
+    # extensions: "Show.S01E01.exe.mkv" is inert on every OS, and testing them would reject the
+    # site-promo files ("www.Sometracker.com.txt") that ship inside plenty of legitimate releases.
+    return get_extension(name, lower=True) in blocked
+
+
+def find_executable_files(filenames) -> list:
+    """
+    Filter an iterable of names down to those that look executable.
+
+    :param filenames: An iterable of filenames to check
+    :return: The subset of ``filenames`` that ``is_executable_file`` rejects
+    """
+    if not filenames:
+        return []
+
+    return [filename for filename in filenames if is_executable_file(filename)]
+
+
 def is_torrent_or_nzb_file(filename: Union[Path, PathLike, str] | None = None) -> bool:
     """
     Check if the provided ``filename`` is a NZB file or a torrent file, based on its extension.

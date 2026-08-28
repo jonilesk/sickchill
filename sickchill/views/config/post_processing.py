@@ -71,6 +71,11 @@ class ConfigPostProcessing(Config):
 
         allowed_extensions = self.get_body_argument("allowed_extensions", default=None)
         settings.ALLOWED_EXTENSIONS = ",".join({x.strip() for x in allowed_extensions.split(",") if x.strip()})
+
+        settings.BLOCK_EXECUTABLE_FILES = config.checkbox_to_value(self.get_body_argument("block_executable_files", default=None))
+        executable_extensions = self.get_body_argument("executable_extensions", default=None)
+        if executable_extensions is not None:
+            settings.EXECUTABLE_EXTENSIONS = ",".join({x.strip().lstrip(".").lower() for x in executable_extensions.split(",") if x.strip()})
         settings.NAMING_CUSTOM_ABD = config.checkbox_to_value(self.get_body_argument("naming_custom_abd", default=None))
         settings.NAMING_CUSTOM_SPORTS = config.checkbox_to_value(self.get_body_argument("naming_custom_sports", default=None))
         settings.NAMING_CUSTOM_ANIME = config.checkbox_to_value(self.get_body_argument("naming_custom_anime", default=None))

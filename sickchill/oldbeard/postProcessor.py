@@ -18,7 +18,7 @@ from guessit import guessit
 import sickchill.helper.common
 import sickchill.oldbeard.subtitles
 from sickchill import adba, logger, settings
-from sickchill.helper.common import SUBTITLE_EXTENSIONS, episode_num, get_extension, is_rar_file, remove_extension, replace_extension
+from sickchill.helper.common import SUBTITLE_EXTENSIONS, episode_num, get_extension, is_executable_file, is_rar_file, remove_extension, replace_extension
 from sickchill.helper.exceptions import EpisodeNotFoundException, EpisodePostProcessingFailedException, ShowDirectoryNotFoundException
 from sickchill.oldbeard import common, db, helpers, notifiers, show_name_helpers
 from sickchill.oldbeard.helpers import verify_freespace
@@ -184,6 +184,13 @@ class PostProcessor(object):
 
             # Exclude .rar files from associated list
             if is_rar_file(associated_file_path):
+                continue
+
+            # Never keep an executable alongside an episode, even if the user allowed its
+            # extension. Fall through so DELETE_NON_ASSOCIATED_FILES can still remove it.
+            if is_executable_file(associated_file_path):
+                if settings.DELETE_NON_ASSOCIATED_FILES:
+                    file_path_list_to_delete.append(associated_file_path)
                 continue
 
             # Define associated files (all, allowed, and non-allowed)

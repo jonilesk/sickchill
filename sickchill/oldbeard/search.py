@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import sickchill.oldbeard.name_cache
 import sickchill.oldbeard.providers
 from sickchill import logger, settings
+from sickchill.helper.common import find_executable_files, is_executable_file
 from sickchill.helper.exceptions import AuthException
 from sickchill.oldbeard.network_timezones import sc_today
 from sickchill.providers.GenericProvider import GenericProvider
@@ -16,7 +17,7 @@ from sickchill.show.History import History
 if TYPE_CHECKING:  # pragma: no cover
     from sickchill.providers.result_classes import SearchResult
 
-from sickchill.oldbeard import clients, common, db, helpers, notifiers, nzbget, nzbSplitter, sab, show_name_helpers, ui
+from sickchill.oldbeard import clients, common, db, helpers, notifiers, nzbget, nzbSplitter, payload_filter, sab, show_name_helpers, ui
 from sickchill.oldbeard.common import MULTI_EP_RESULT, SEASON_RESULT, SNATCHED, SNATCHED_BEST, SNATCHED_PROPER, Quality
 
 
@@ -62,6 +63,37 @@ def _download_result(result: "SearchResult"):
     return result_was_downloaded
 
 
+def _payload_has_executables(result: "SearchResult") -> bool:
+    """
+    Check a result's payload for executables before it is handed to a download client.
+
+    A magnet link has no payload to read, so those fall back to the release name check and to the
+    unrar and post-processing gates. Blackhole results are checked by the provider's
+    _verify_download instead, which also removes the file it just wrote.
+
+    :param result: SearchResult instance to inspect
+    :return: True if the payload contains files we refuse to download
+    """
+    if not settings.BLOCK_EXECUTABLE_FILES:
+        return False
+
+    blocked = payload_filter.blocked_payload_files(result)
+
+    if not blocked and result.is_nzb and result.provider:
+        # We only hold a URL for this one, so fetch the NZB to see what it references.
+        try:
+            blocked = find_executable_files(payload_filter.nzb_payload_names(result.provider.get_url(result.url, returns="content")))
+        except Exception as error:
+            logger.debug(f"Unable to fetch {result.name} to check it for executables: {error}")
+            return False
+
+    if blocked:
+        logger.warning(f"Refusing to snatch {result.name}, it contains executable files: {', '.join(blocked)}")
+        return True
+
+    return False
+
+
 def snatch_episode(result: "SearchResult", end_status=SNATCHED):
     """
     Contains the internal logic necessary to actually "snatch" a result that
@@ -73,6 +105,12 @@ def snatch_episode(result: "SearchResult", end_status=SNATCHED):
     """
 
     if result is None:
+        return False
+
+    # pick_best_result already drops these, but the manual snatch in views/home.py and
+    # properFinder call us directly, so re-check here.
+    if is_executable_file(result.name):
+        logger.warning(f"Refusing to snatch {result.name}, it looks like an executable rather than an episode")
         return False
 
     if settings.ALLOW_HIGH_PRIORITY:
@@ -92,6 +130,9 @@ def snatch_episode(result: "SearchResult", end_status=SNATCHED):
             if not result.content and not result.url.startswith("magnet") and result.provider.login():
                 result.content = result.provider.get_url(result.url, returns="content")
 
+            if _payload_has_executables(result):
+                return False
+
             if result.content or result.url.startswith("magnet"):
                 client = clients.getClientInstance(settings.TORRENT_METHOD)()
                 snatched_result = client.sendTORRENT(result)
@@ -103,6 +144,9 @@ def snatch_episode(result: "SearchResult", end_status=SNATCHED):
                 snatched_result = False
     # NZBs can be sent straight to SAB or saved to disk
     elif result.is_nzb or result.is_nzbdata:
+        if settings.NZB_METHOD != "blackhole" and _payload_has_executables(result):
+            return False
+
         if settings.NZB_METHOD == "blackhole":
             snatched_result = _download_result(result)
         elif settings.NZB_METHOD == "sabnzbd":
@@ -198,6 +242,10 @@ def pick_best_result(results, show):
             continue
 
         if not show_name_helpers.filter_bad_releases(result.name, parse=False, show=show):
+            continue
+
+        if is_executable_file(result.name):
+            logger.warning(f"{result.name} looks like an executable rather than an episode, rejecting it")
             continue
 
         if hasattr(result, "size") and settings.USE_FAILED_DOWNLOADS and History().has_failed(result.name, result.size, result.provider.name):

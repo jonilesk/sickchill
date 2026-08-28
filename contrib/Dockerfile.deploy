@@ -1,0 +1,46 @@
+# Builds SickChill from this checkout and installs it over the official image.
+#
+# Why not the repository's own Dockerfile: without --build-arg SOURCE it installs SickChill from
+# PyPI, so local changes never reach the image at all, and building it properly needs a Rust
+# toolchain plus a buildx builder created with the security.insecure entitlement (it uses
+# RUN --security=insecure for rustup). Installing a freshly built wheel over the released image
+# avoids all of that and produces the same running code for anything that is pure Python.
+#
+# Usage, from the repository root:
+#
+#   docker build -f contrib/Dockerfile.deploy -t sickchill:local .
+#
+# Then point your compose file at sickchill:local instead of sickchill/sickchill:latest.
+
+FROM python:3.13-slim-bookworm AS wheelbuilder
+
+RUN pip install --no-cache-dir poetry-core>=2.2 build
+
+WORKDIR /src
+COPY . /src/
+
+# --no-isolation: poetry-core is already installed, so do not go to the network for it.
+RUN python -m build --wheel --no-isolation --outdir /wheels && ls -l /wheels
+
+FROM sickchill/sickchill:latest
+
+COPY --from=wheelbuilder /wheels/*.whl /tmp/
+
+# Two steps, and the order matters. The official image is built from the last PyPI release, but
+# this checkout may be ahead of that tag and carry dependencies the image does not have (at the
+# time of writing: html5lib, imdbpie, js2py, pymediainfo, python3-fanart). So:
+#   1. a normal install, to let pip resolve and pull those missing dependencies;
+#   2. a forced no-deps reinstall, because the version string is often unchanged and pip would
+#      otherwise be free to treat the requirement as already satisfied and skip our code.
+RUN /.venv/bin/pip install --no-cache-dir /tmp/*.whl \
+ && /.venv/bin/pip install --no-cache-dir --force-reinstall --no-deps /tmp/*.whl \
+ && rm -f /tmp/*.whl
+
+# Import the app rather than trusting that pip did the right thing. This doubles as a smoke test:
+# it fails the build if a dependency is missing, instead of leaving that to discover at runtime.
+RUN /.venv/bin/python -c "\
+from sickchill import settings; \
+assert hasattr(settings, 'BLOCK_EXECUTABLE_FILES'), 'BLOCK_EXECUTABLE_FILES missing'; \
+from sickchill.helper.common import is_executable_file; \
+from sickchill.oldbeard import payload_filter; \
+print('executable blocking present, default extensions:', settings.EXECUTABLE_EXTENSIONS)"

@@ -362,6 +362,8 @@ def initialize(console_logging: bool = True, debug: bool = False, dbdebug: bool 
         settings.DELETE_NON_ASSOCIATED_FILES = check_setting_bool(settings.CFG, "General", "delete_non_associated_files", True)
         settings.POSTPONE_IF_SYNC_FILES = check_setting_bool(settings.CFG, "General", "postpone_if_sync_files", True)
         settings.SYNC_FILES = check_setting_str(settings.CFG, "General", "sync_files", settings.SYNC_FILES)
+        settings.BLOCK_EXECUTABLE_FILES = check_setting_bool(settings.CFG, "General", "block_executable_files", True)
+        settings.EXECUTABLE_EXTENSIONS = check_setting_str(settings.CFG, "General", "executable_extensions", settings.EXECUTABLE_EXTENSIONS)
         settings.NFO_RENAME = check_setting_bool(settings.CFG, "General", "nfo_rename", True)
         settings.CREATE_MISSING_SHOW_DIRS = check_setting_bool(settings.CFG, "General", "create_missing_show_dirs")
         settings.ADD_SHOWS_WO_DIR = check_setting_bool(settings.CFG, "General", "add_shows_wo_dir")
@@ -1253,6 +1255,8 @@ def save_config():
                 "delete_non_associated_files": int(settings.DELETE_NON_ASSOCIATED_FILES),
                 "sync_files": settings.SYNC_FILES,
                 "postpone_if_sync_files": int(settings.POSTPONE_IF_SYNC_FILES),
+                "block_executable_files": int(settings.BLOCK_EXECUTABLE_FILES),
+                "executable_extensions": settings.EXECUTABLE_EXTENSIONS,
                 "nfo_rename": int(settings.NFO_RENAME),
                 "process_automatically": int(settings.PROCESS_AUTOMATICALLY),
                 "no_delete": int(settings.NO_DELETE),

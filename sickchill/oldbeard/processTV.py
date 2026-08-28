@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from rarfile import BadRarFile, Error, NeedFirstVolume, PasswordRequired, RarCRCError, RarExecError, RarFile, RarOpenError, RarWrongPassword
 
 from sickchill import logger, settings
-from sickchill.helper.common import is_media_file, is_rar_file, is_sync_file, is_torrent_or_nzb_file, remove_extension, valid_url
+from sickchill.helper.common import find_executable_files, is_media_file, is_rar_file, is_sync_file, is_torrent_or_nzb_file, remove_extension, valid_url
 from sickchill.helper.exceptions import EpisodePostProcessingFailedException, FailedPostProcessingFailedException
 from sickchill.oldbeard import common, db, failedProcessor, helpers, postProcessor
 
@@ -173,6 +173,19 @@ def process_dir(process_path, release_name=None, process_method=None, force=Fals
 
             if current_directory:
                 filenames = [f for f in filenames if not is_torrent_or_nzb_file(f)]
+
+                # Delete executables before anything else. This has to happen ahead of
+                # validate_dir: a folder containing nothing but malware has no processable items,
+                # so validate_dir rejects it and the payload would simply be left on disk.
+                blocked_files = find_executable_files(filenames)
+                if blocked_files:
+                    result.output += log_helper(
+                        _("Deleting executable files, they are never part of an episode: {blocked_files}").format(blocked_files=", ".join(blocked_files)),
+                        logger.WARNING,
+                    )
+                    delete_files(current_directory, blocked_files, result, force=True)
+                    filenames = [f for f in filenames if f not in blocked_files]
+
                 rar_files = [x for x in filenames if is_rar_file(os.path.join(current_directory, x))]
                 if rar_files:
                     extracted_directories = unrar(current_directory, rar_files, force, result)
@@ -200,8 +213,22 @@ def process_dir(process_path, release_name=None, process_method=None, force=Fals
             if not (process_method == "move" and result.result) or (mode == "manual" and not delete_on):
                 continue
 
+            # Anything that is not the episode itself is junk the release shipped with: promo
+            # files, nfos, screenshots. Videos are excluded because process_media has just moved
+            # them, and rar files because they are deleted further down instead, but only once
+            # the directory extracted from them has been processed successfully. .stfolder is
+            # Syncthing's marker and has to survive.
+            #
+            # Never sweep the download directory itself. delete_folder refuses to remove it for
+            # the same reason: it is routinely shared with the torrent client and other tools, so
+            # everything loose in it that is not an episode is not automatically ours to delete.
+            # Release folders below it are still cleaned, and the executable sweep further up
+            # deliberately still applies here, because that one only ever targets executables.
             # noinspection PyTypeChecker
-            unwanted_files = [x for x in filenames if x in video_files + rar_files]
+            if settings.TV_DOWNLOAD_DIR and Path(current_directory).resolve() == Path(settings.TV_DOWNLOAD_DIR).resolve():
+                unwanted_files = []
+            else:
+                unwanted_files = [x for x in filenames if x not in video_files + rar_files and x != ".stfolder"]
             if unwanted_files:
                 result.output += log_helper(_("Found unwanted files: {unwanted_files}").format(unwanted_files=unwanted_files), logger.DEBUG)
 
@@ -360,6 +387,19 @@ def unrar(path, rar_files, force, result):
                     continue
 
                 rar_handle.testrar()
+
+                # Never extract an archive carrying executables. This is the last chance to stop
+                # the payload reaching the filesystem, since extractall below writes every member.
+                rar_blocked_files = find_executable_files(rar_handle.namelist())
+                if rar_blocked_files:
+                    result.output += log_helper(
+                        _("Not extracting {archive_path}, it contains executable files: {rar_blocked_files}").format(
+                            archive_path=archive_path, rar_blocked_files=", ".join(rar_blocked_files)
+                        ),
+                        logger.WARNING,
+                    )
+                    result.missed_files.append(f"{archive_path} : Archive contains executable files")
+                    continue
 
                 # If there are no video files in the rar, don't extract it
                 rar_media_files = list(filter(is_media_file, rar_handle.namelist()))

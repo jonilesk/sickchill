@@ -3,7 +3,8 @@ from datetime import datetime
 import bencode
 
 from sickchill import logger, settings
-from sickchill.helper.common import try_int
+from sickchill.helper.common import find_executable_files, try_int
+from sickchill.oldbeard import payload_filter
 from sickchill.oldbeard.common import Quality
 from sickchill.oldbeard.db import DBConnection
 from sickchill.oldbeard.network_timezones import sc_now, sc_today
@@ -111,6 +112,16 @@ class TorrentProvider(GenericProvider):
             logger.debug(f"Failed to validate torrent file: {error}")
             logger.debug("Result is not a valid torrent file")
             return False
+
+        with open(filename, "rb") as torrent_file:
+            blocked = find_executable_files(payload_filter.torrent_payload_names(torrent_file.read()))
+
+        if blocked:
+            # Returning False makes download_result remove the file we just wrote to the
+            # blackhole directory, so the torrent client never picks it up.
+            logger.warning(f"Refusing to download {filename}, it contains executable files: {', '.join(blocked)}")
+            return False
+
         return True
 
     def seed_ratio(self):

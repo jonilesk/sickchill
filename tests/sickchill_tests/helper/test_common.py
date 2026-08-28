@@ -13,7 +13,9 @@ from sickchill.helper.common import (
     SUBTITLE_EXTENSIONS,
     convert_size,
     episode_num,
+    find_executable_files,
     http_code_description,
+    is_executable_file,
     is_media_file,
     is_rar_file,
     is_sync_file,
@@ -113,6 +115,73 @@ class CommonTests(unittest.TestCase):
                     assert is_sync_file(filename) == result, (filename, result)
                 else:
                     self.assertRaises(TypeError, msg=(filename, result))
+
+    def test_is_executable_file(self):
+        """
+        Test is executable file
+        """
+        settings.BLOCK_EXECUTABLE_FILES = True
+        settings.EXECUTABLE_EXTENSIONS = "exe,scr,msi,lnk,ps1"
+
+        test_cases = {
+            None: False,
+            "": False,
+            "Show.Name.S01E01.mkv": False,
+            "Show.Name.S01E01.srt": False,
+            "Show.Name.S01E01.exe": True,
+            # Case must not matter.
+            "Show.Name.S01E01.EXE": True,
+            "Show.Name.S01E01.Exe": True,
+            # The classic disguise: a real-looking media extension followed by the real one.
+            "Show.Name.S01E01.1080p.mkv.exe": True,
+            "Show.Name.S01E01.mkv.scr": True,
+            "Show.Name.S01E01.mkv.lnk": True,
+            "install.ps1": True,
+            "setup.msi": True,
+            # Only the final extension decides what runs, so this inert name is allowed through.
+            "Show.Name.S01E01.exe.mkv": False,
+            # Site promo files ending in an unlisted extension must not be rejected.
+            "www.Sometracker.com.txt": False,
+            "RARBG.com.mp4": False,
+            # An extension not on the list is fine.
+            "Show.Name.S01E01.nfo": False,
+            # A right-to-left override is only ever used to disguise an extension.
+            "Show.Name.S01E01.1080p\u202egnp.exe": True,
+            "Show.Name.S01E01.1080p\u202emkv.txt": True,
+        }
+
+        for filename, result in test_cases.items():
+            assert is_executable_file(filename) == result, (filename, result)
+
+        # Paths and PathLike must be handled, not just bare names.
+        assert is_executable_file(Path("/downloads/Show.Name.S01E01/setup.exe")) is True
+        assert is_executable_file(Path("/downloads/Show.Name.S01E01/episode.mkv")) is False
+        # A directory named like an executable must not poison the files under it.
+        assert is_executable_file("payload.exe/Show.Name.S01E01.mkv") is False
+
+        # Emptying the extension list disables the check.
+        settings.EXECUTABLE_EXTENSIONS = ""
+        assert is_executable_file("Show.Name.S01E01.exe") is False
+
+        # So does turning the setting off, even with a populated list.
+        settings.EXECUTABLE_EXTENSIONS = "exe,scr,msi,lnk,ps1"
+        settings.BLOCK_EXECUTABLE_FILES = False
+        assert is_executable_file("Show.Name.S01E01.exe") is False
+        assert is_executable_file("Show.Name.S01E01.1080p\u202egnp.exe") is False
+
+        settings.BLOCK_EXECUTABLE_FILES = True
+
+    def test_find_executable_files(self):
+        """
+        Test find executable files
+        """
+        settings.BLOCK_EXECUTABLE_FILES = True
+        settings.EXECUTABLE_EXTENSIONS = "exe,scr"
+
+        assert find_executable_files([]) == []
+        assert find_executable_files(None) == []
+        assert find_executable_files(["a.mkv", "b.srt"]) == []
+        assert find_executable_files(["a.mkv", "b.exe", "c.srt", "d.scr"]) == ["b.exe", "d.scr"]
 
     def test_is_torrent_or_nzb_file(self):
         """

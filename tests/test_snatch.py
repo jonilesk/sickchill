@@ -3,10 +3,14 @@ Test snatching
 """
 
 import unittest
+from unittest.mock import patch
+
+import bencode
 
 import sickchill.oldbeard.helpers
 from sickchill import settings
 from sickchill.oldbeard import common as common, search as search
+from sickchill.providers.result_classes import TorrentSearchResult
 from sickchill.tv import TVEpisode, TVShow
 from tests import conftest
 
@@ -131,6 +135,63 @@ class SearchTest(conftest.SickChillTestDBCase):
                         self.assertEqual(data["best_result"], best_result)
 
                     self.assertEqual(data["best_result"], best_result.name)  # first is expected, second is chosen one
+
+
+class SnatchExecutableTest(unittest.TestCase):
+    """
+    Refuse to snatch releases that carry executables.
+    """
+
+    def setUp(self):
+        settings.BLOCK_EXECUTABLE_FILES = True
+        settings.EXECUTABLE_EXTENSIONS = "exe,scr,msi,lnk,ps1"
+        settings.ALLOW_HIGH_PRIORITY = False
+        settings.TORRENT_METHOD = "qbittorrent"
+
+    @staticmethod
+    def _torrent_result(name, paths):
+        result = TorrentSearchResult([], provider=None, url="http://example.com/x.torrent")
+        result.name = name
+        result.content = bencode.encode(
+            {
+                "announce": "http://tracker.example.com/announce",
+                "info": {
+                    "name": "Show.Name.S01E01.1080p",
+                    "piece length": 16384,
+                    "pieces": "",
+                    "files": [{"length": 100, "path": path} for path in paths],
+                },
+            }
+        )
+        return result
+
+    def test_executable_release_name_is_not_snatched(self):
+        result = self._torrent_result("Show.Name.S01E01.1080p.mkv.exe", [["Show.Name.S01E01.mkv"]])
+        with patch("sickchill.oldbeard.clients.getClientInstance") as get_client:
+            assert search.snatch_episode(result) is False
+            get_client.assert_not_called()
+
+    def test_executable_inside_torrent_is_not_snatched(self):
+        result = self._torrent_result("Show.Name.S01E01.1080p.HDTV.x264-GROUP", [["Show.Name.S01E01.mkv"], ["Sample", "setup.exe"]])
+        with patch("sickchill.oldbeard.clients.getClientInstance") as get_client:
+            assert search.snatch_episode(result) is False
+            get_client.assert_not_called()
+
+    def test_clean_torrent_reaches_the_client(self):
+        """The same result without the executable must still be handed to the client."""
+        result = self._torrent_result("Show.Name.S01E01.1080p.HDTV.x264-GROUP", [["Show.Name.S01E01.mkv"], ["Subs", "Show.Name.S01E01.srt"]])
+        with patch("sickchill.oldbeard.clients.getClientInstance") as get_client:
+            get_client.return_value.return_value.sendTORRENT.return_value = False
+            search.snatch_episode(result)
+            get_client.assert_called_once()
+
+    def test_disabled_setting_lets_it_through(self):
+        settings.BLOCK_EXECUTABLE_FILES = False
+        result = self._torrent_result("Show.Name.S01E01.1080p.HDTV.x264-GROUP", [["Sample", "setup.exe"]])
+        with patch("sickchill.oldbeard.clients.getClientInstance") as get_client:
+            get_client.return_value.return_value.sendTORRENT.return_value = False
+            search.snatch_episode(result)
+            get_client.assert_called_once()
 
 
 if __name__ == "__main__":

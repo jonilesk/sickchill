@@ -148,6 +148,44 @@
 
                         <div class="field-pair row">
                             <div class="col-lg-3 col-md-3 col-sm-4 col-xs-12">
+                                <label class="component-title">${_('Block executable files')}</label>
+                            </div>
+                            <div class="col-lg-9 col-md-9 col-sm-8 col-xs-12 pull-right component-desc">
+                                <input type="checkbox" name="block_executable_files" id="block_executable_files" ${checked(settings.BLOCK_EXECUTABLE_FILES)}/>
+                                <label for="block_executable_files">${_('refuse to download or post process releases containing executables.')}</label>
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <span class="component-desc">${_('Malware is commonly distributed as an executable disguised as an episode. This rejects a release if its name, its .torrent or .nzb contents, or a RAR inside it contains one, and removes any that reach the post processing folder.')}</span>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <span class="component-desc">${_('A magnet link sent straight to a torrent client has no file list to check, so those are only caught by the release name and during post processing.')}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="field-pair row">
+                            <div class="col-lg-3 col-md-3 col-sm-4 col-xs-12">
+                                <label class="component-title">${_('Executable file extensions')}</label>
+                            </div>
+                            <div class="col-lg-9 col-md-9 col-sm-8 col-xs-12 pull-right component-desc">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <input type="text" name="executable_extensions" id="executable_extensions" value="${settings.EXECUTABLE_EXTENSIONS}" class="form-control input-sm input350" autocapitalize="off" title="executable_extensions" />
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <span class="component-desc">${_('comma separated list of extensions treated as executable. Emptying it disables the check.')}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="field-pair row">
+                            <div class="col-lg-3 col-md-3 col-sm-4 col-xs-12">
                                 <label class="component-title">${_('Rename Episodes')}</label>
                             </div>
                             <div class="col-lg-9 col-md-9 col-sm-8 col-xs-12 pull-right component-desc">
